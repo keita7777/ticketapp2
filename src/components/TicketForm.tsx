@@ -17,19 +17,43 @@ import {
 } from "./ui/select";
 import { Button } from "./ui/button";
 import { useState } from "react";
+import axios from "axios";
+import { useRouter } from "next/navigation";
+import { Ticket } from "@prisma/client";
 
 type TicketFormData = z.infer<typeof ticketSchema>;
 
-const TicketForm = () => {
+interface Props {
+  ticket?: Ticket;
+}
+
+const TicketForm = ({ ticket }: Props) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const router = useRouter();
 
   const form = useForm<TicketFormData>({
     resolver: zodResolver(ticketSchema),
   });
 
   async function onSubmit(values: TicketFormData) {
-    console.log(values);
+    try {
+      setIsSubmitting(true);
+      setError("");
+
+      if (ticket) {
+        await axios.patch("/api/tickets/" + ticket.id, values);
+      } else {
+        await axios.post("/api/tickets", values);
+      }
+
+      setIsSubmitting(false);
+      router.push("/tickets");
+      router.refresh();
+    } catch (error) {
+      setError("Unknown Error Occured.");
+      setIsSubmitting(false);
+    }
   }
 
   return (
@@ -42,6 +66,7 @@ const TicketForm = () => {
           <FormField
             control={form.control}
             name="title"
+            defaultValue={ticket?.title}
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Ticket Title</FormLabel>
@@ -53,6 +78,7 @@ const TicketForm = () => {
           />
           <Controller
             name="description"
+            defaultValue={ticket?.description}
             control={form.control}
             render={({ field }) => (
               <SimpleMDE placeholder="Description" {...field} />
@@ -61,6 +87,7 @@ const TicketForm = () => {
           <div className="flex w-full space-x-4">
             <FormField
               name="status"
+              defaultValue={ticket?.status}
               control={form.control}
               render={({ field }) => (
                 <FormItem>
@@ -85,6 +112,7 @@ const TicketForm = () => {
             />
             <FormField
               name="priority"
+              defaultValue={ticket?.priority}
               control={form.control}
               render={({ field }) => (
                 <FormItem>
@@ -109,7 +137,7 @@ const TicketForm = () => {
             />
           </div>
           <Button type="submit" disabled={isSubmitting}>
-            Submit
+            {ticket ? "Update Ticket" : "Create Ticket"}
           </Button>
         </form>
       </Form>
